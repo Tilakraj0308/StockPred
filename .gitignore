@@ -1,1 +1,7 @@
 token.txt
+myenv
+*.csv
+test.py
+*.ipynb
+__pycache__
+

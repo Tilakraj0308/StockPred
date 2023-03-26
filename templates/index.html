@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+
+<body>
+    <form>
+        <select name="ticker" id="ticker" onchange="handleChange(event)">
+            {% for ticker in tickers %}
+            <option value="{{ticker.symbol}}">{{ticker.name}}</option>
+            {% endfor %}
+        </select>
+        <button name="Get stocks">Predict</button>
+        <div id="chart"></div>
+    </form>
+
+    <script>
+        function handleChange(event) {
+            const symbol= event.target.value
+            console.log(event.target.value)
+            fetch(`/data/${symbol}`).then(res => res.json()).then(res => {
+            const historicalStock = JSON.parse(res);
+            let data = [];
+            historicalStock.data.map(stock => {
+                data.push({
+                    x: stock["Date"],
+                    y: [stock["Open"], stock["High"], stock["Low"], stock["Close"]]
+                })
+            })
+
+            const options = {
+                series: [{
+                    data
+                }],
+                chart: {
+                    type: "candlestick",
+                    height: 350
+                },
+                title: {
+                    text: "CandleStick Chart",
+                    align: "left"
+                },
+                xaxis: {
+                    type: "datetime"
+                },
+                yaxis: {
+                    tooltip: {
+                        enabled: true
+                    }
+                }
+            }
+
+            let chart = new ApexCharts(document.querySelector("#chart"), options);
+            chart.render();
+
+        })
+        }
+        // const symbol = window.location.pathname.slice(1) === "" ? "MSFT" : window.location.pathname.slice(1)
+        
+    </script>
+</body>
+
+</html>
