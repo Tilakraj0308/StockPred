@@ -2,37 +2,66 @@ from sklearn import preprocessing
 import numpy as np
 import tensorflow as tf
 from model import get_model
+import yfinance as yf
+
 
 # val_set_per = 10
 # test_set_per = 10
 
-def scale(df, inverse=False):
+
+
+# def scale(df, inverse=False):
+#     scaler = preprocessing.MinMaxScaler()
+#     if not inverse:
+#         df = scaler.fit_transform(tf.reshape(df, (-1,1)))
+#         return df
+#     else:
+#         df = scaler.inverse_transform(df)
+#         return df
+
+
+# def get_prediction(df, model):
+#     # Scale
+#     scaler = preprocessing.MinMaxScaler()
+#     scaler.fit(tf.reshape(df, (-1,1)))
+#     df_scaled = scaler.transform(tf.reshape(df, (-1, 1)))
+#     df_scaled = tf.expand_dims(df_scaled, axis=0)
+#     pred = model.predict(df_scaled)
+#     return scaler.inverse_transform(tf.reshape(pred, (-1, 1)))
+
+
+# for continous prediction using sliding window of size 'n'
+def get_prediction_cont(df, model, upto_predict, size=30):
     scaler = preprocessing.MinMaxScaler()
-    if inverse:
-        df = scaler.fit_transform(tf.reshape(df, (-1,1)))
-        return df
-    else:
-        df = scaler.inverse_transform(tf.reshape(df, (-1,1)))
-        return df
+    scaler.fit(tf.reshape(df, (-1,1)))
+    df_scaled = scaler.transform(tf.reshape(df, (-1, 1)))
+    df_scaled = df_scaled[1:]
+    pred = []
+    # print(df_scaled.shape)
+    # print(df_scaled[0].shape)
+    for i in range(upto_predict):
+        df2 = df_scaled[1-size:]
+        # shape(None, n, 1) --> Shape(1, n, 1)
+        df2 = tf.expand_dims(df2, axis=0)
+        # predicted_scaled has (1,1) output but should be (1,) for adding in the df_scaled
+        predicted_scaled = model.predict(df2)
+        # Appending into df_scaled but it reduces its shape from (29, 1) to (30,) so we need to expand dims
+        df_scaled = tf.expand_dims(np.append(df_scaled, tf.squeeze(predicted_scaled, axis = -1)), axis=1)
+        predicted = scaler.inverse_transform(predicted_scaled)
+        pred.append(predicted)
+    return np.array(pred)
 
-
-def get_prediction(df, window_size=60):
+    
+def get_full_prediction(df, upto_predict, window_size=30):
     df_eqix = df.copy()
     df_eqix.dropna(inplace=True)
-    df_eqix_open = df_eqix['open']
-    df_eqix_close = df_eqix['close']
-    df_eqix_high = df_eqix['high']
-    df_eqix_low = df_eqix['low']
-    df_eqix_open_norm = scale(df_eqix_open.copy())
-    df_eqix_close_norm = scale(df_eqix_close.copy())
-    df_eqix_high_norm = scale(df_eqix_high.copy())
-    df_eqix_low_norm = scale(df_eqix_low.copy())
-    # df_eqix_norm = scale(df_eqix_norm)
-    # x_train, y_train, x_val, y_val, x_test, y_test = preprocess_data(df_eqix_norm, window_size=window_size)
+    pred = []
+    components = [df_eqix['Open'], df_eqix['Close'], df_eqix['High'], df_eqix['Low']]
     model = get_model(window_size)
-    pred_open = model.predict(df_eqix_open_norm)
-    pred_close = model.predict(df_eqix_close_norm)
-    pred_high = model.predict(df_eqix_high_norm)
-    pred_low = model.predict(df_eqix_low_norm)
-    return [scale(pred_open, True), scale(pred_close, True), scale(pred_high, True), scale(pred_low,True)]
-    
+    for c in components:
+        # c = c[1:]
+        # print(c.shape)
+        pred.append(get_prediction_cont(c, model, upto_predict, window_size))
+    return pred
+
+

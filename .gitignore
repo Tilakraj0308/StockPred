@@ -4,4 +4,5 @@ myenv
 test.py
 *.ipynb
 __pycache__
+templates/
 

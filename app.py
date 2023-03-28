@@ -1,30 +1,14 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify
 import yfinance as yf
-import json
-
-# apple = Share('YHOO')
-# s = apple.data_set()
-# print(type(s))
+from util import get_full_prediction
 
 app = Flask(__name__)
 
 
-@app.route('/', methods=['GET', 'POST'])
-def home():
-    f = open("tickers.json")
-    data = json.load(f)
-    f.close()
-    print(data)
-    return render_template("index.html",  tickers=data)
-
-@app.route('/<symbol>', methods=['GET'])
-def symbol(symbol):
-   
-    return render_template("index.html")
-
-
-@app.route('/data/<symbol>', methods=['GET'])
-def data(symbol="MSFT"):
+@app.route('/stocks/<symbol>/predict', methods=['GET', 'POST'])
+def predict(symbol, upto_predict=30):
     stock = yf.Ticker(str(symbol))
-    history = stock.history(period="1mo")
-    return jsonify(history.to_json(orient='table'))
+    history = stock.history(period="30d")
+    pred = get_full_prediction(history, upto_predict, window_size=30)
+    # print(history['Open'])
+    return str(len(pred[0]))
